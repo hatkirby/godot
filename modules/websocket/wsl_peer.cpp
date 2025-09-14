@@ -186,9 +186,9 @@ int WSLPeer::CompressionObject::compress(const uint8_t *input, int input_size, P
 	int full_length = _deflater.total_out - old_total;
 	output.resize(full_length);
 
-	int start_window_at = std::max(0, input_size - _window_length);
-	_window_used = input_size - start_window_at;
-	std::memcpy(_window.write().ptr(), input + start_window_at, _window_used);
+	int start_window_at = std::max(0, input_w.size() - _window_length);
+	_window_used = input_w.size() - start_window_at;
+	std::memcpy(_window.write().ptr(), input_w.read().ptr() + start_window_at, _window_used);
 
 	return 0;
 }
