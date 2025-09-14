@@ -77,6 +77,35 @@ bool WSLServer::PendingPeer::_parse_request(const Vector<String> p_protocols) {
 	_WSL_CHECK_EX("connection");
 #undef _WSL_CHECK_EX
 #undef _WSL_CHECK
+	if (headers.has("sec-websocket-extensions")) {
+		Vector<String> extensions = headers["sec-websocket-extensions"].split(", ");
+		for (int i = 0; i < extensions.size(); i++) {
+			const String &extension = extensions[i];
+
+			if (compression_enabled && extension.begins_with("permessage-deflate")) {
+				Vector<String> components = extension.split("; ");
+				for (int j = 0; j < components.size(); j++) {
+					const String &component = components[j];
+
+					if (component == "server_no_context_takeover") {
+						server_no_context_takeover = true;
+					} else if (component == "client_no_context_takeover") {
+						client_no_context_takeover = true;
+					} else if (component.begins_with("server_max_window_bits=")) {
+						int remote = component.substr(23).to_int();
+						if (remote < server_max_window_bits) {
+							server_max_window_bits = remote;
+						}
+					} else if (component.begins_with("client_max_window_bits=")) {
+						int remote = component.substr(23).to_int();
+						if (remote < client_max_window_bits) {
+							client_max_window_bits = remote;
+						}
+					}
+				}
+			}
+		}
+	}
 	key = headers["sec-websocket-key"];
 	if (headers.has("sec-websocket-protocol")) {
 		Vector<String> protos = headers["sec-websocket-protocol"].split(",");
@@ -148,6 +177,22 @@ Error WSLServer::PendingPeer::do_handshake(const Vector<String> p_protocols, uin
 				s += "Sec-WebSocket-Accept: " + WSLPeer::compute_key_response(key) + "\r\n";
 				if (protocol != "") {
 					s += "Sec-WebSocket-Protocol: " + protocol + "\r\n";
+				}
+				if (compression_enabled) {
+					s += "Sec-WebSocket-Extensions: permessage-deflate";
+					if (server_no_context_takeover) {
+						s += "; server_no_context_takeover";
+					}
+					if (client_no_context_takeover) {
+						s += "; client_no_context_takeover";
+					}
+					if (server_max_window_bits != MAX_WINDOW_BITS) {
+						s += "; server_max_window_bits=" + server_max_window_bits;
+					}
+					if (client_max_window_bits != MAX_WINDOW_BITS) {
+						s += "; client_max_window_bits=" + client_max_window_bits;
+					}
+					s += "\r\n";
 				}
 				for (int i = 0; i < p_extra_headers.size(); i++) {
 					s += p_extra_headers[i] + "\r\n";
@@ -234,6 +279,10 @@ void WSLServer::poll() {
 		ws_peer->make_context(data, _in_buf_size, _in_pkt_size, _out_buf_size, _out_pkt_size);
 		ws_peer->set_no_delay(true);
 
+		if (ppeer->compression_enabled) {
+			ws_peer->enable_compression(ppeer->client_no_context_takeover, ppeer->server_no_context_takeover, ppeer->client_max_window_bits, ppeer->server_max_window_bits);
+		}
+
 		_peer_map[id] = ws_peer;
 		remove_peers.push_back(ppeer);
 		_on_connect(id, ppeer->protocol);
@@ -254,6 +303,11 @@ void WSLServer::poll() {
 		}
 
 		Ref<PendingPeer> peer = memnew(PendingPeer);
+		peer->compression_enabled = compression_enabled;
+		peer->client_no_context_takeover = client_no_context_takeover;
+		peer->server_no_context_takeover = server_no_context_takeover;
+		peer->client_max_window_bits = client_max_window_bits;
+		peer->server_max_window_bits = server_max_window_bits;
 		if (private_key.is_valid() && ssl_cert.is_valid()) {
 			Ref<StreamPeerSSL> ssl = Ref<StreamPeerSSL>(StreamPeerSSL::create());
 			ssl->set_blocking_handshake_enabled(false);

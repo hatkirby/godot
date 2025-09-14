@@ -70,6 +70,23 @@ void WebSocketServer::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("set_handshake_timeout", "timeout"), &WebSocketServer::set_handshake_timeout);
 	ADD_PROPERTY(PropertyInfo(Variant::REAL, "handshake_timeout"), "set_handshake_timeout", "get_handshake_timeout");
 
+	ClassDB::bind_method(D_METHOD("set_compression_enabled", "enabled"), &WebSocketServer::set_compression_enabled);
+	ClassDB::bind_method(D_METHOD("is_compression_enabled"), &WebSocketServer::is_compression_enabled);
+	ClassDB::bind_method(D_METHOD("set_server_no_context_takeover", "enabled"), &WebSocketServer::set_server_no_context_takeover);
+	ClassDB::bind_method(D_METHOD("is_server_no_context_takeover"), &WebSocketServer::is_server_no_context_takeover);
+	ClassDB::bind_method(D_METHOD("set_client_no_context_takeover", "enabled"), &WebSocketServer::set_client_no_context_takeover);
+	ClassDB::bind_method(D_METHOD("is_client_no_context_takeover"), &WebSocketServer::is_client_no_context_takeover);
+	ClassDB::bind_method(D_METHOD("set_server_max_window_bits", "max_window_bits"), &WebSocketServer::set_server_max_window_bits);
+	ClassDB::bind_method(D_METHOD("get_server_max_window_bits"), &WebSocketServer::get_server_max_window_bits);
+	ClassDB::bind_method(D_METHOD("set_client_max_window_bits", "max_window_bits"), &WebSocketServer::set_client_max_window_bits);
+	ClassDB::bind_method(D_METHOD("get_client_max_window_bits"), &WebSocketServer::get_client_max_window_bits);
+
+	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "compression_enabled"), "set_compression_enabled", "is_compression_enabled");
+	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "server_no_context_takeover"), "set_server_no_context_takeover", "is_server_no_context_takeover");
+	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "client_no_context_takeover"), "set_client_no_context_takeover", "is_client_no_context_takeover");
+	ADD_PROPERTY(PropertyInfo(Variant::INT, "server_max_window_bits"), "set_server_max_window_bits", "get_server_max_window_bits");
+	ADD_PROPERTY(PropertyInfo(Variant::INT, "client_max_window_bits"), "set_client_max_window_bits", "get_client_max_window_bits");
+
 	ADD_SIGNAL(MethodInfo("client_close_request", PropertyInfo(Variant::INT, "id"), PropertyInfo(Variant::INT, "code"), PropertyInfo(Variant::STRING, "reason")));
 	ADD_SIGNAL(MethodInfo("client_disconnected", PropertyInfo(Variant::INT, "id"), PropertyInfo(Variant::BOOL, "was_clean_close")));
 	ADD_SIGNAL(MethodInfo("client_connected", PropertyInfo(Variant::INT, "id"), PropertyInfo(Variant::STRING, "protocol")));
@@ -132,6 +149,47 @@ NetworkedMultiplayerPeer::ConnectionStatus WebSocketServer::get_connection_statu
 
 bool WebSocketServer::is_server() const {
 	return true;
+}
+
+void WebSocketServer::set_compression_enabled(bool p_compression_enabled) {
+	// TODO: don't allow when connection is live.
+	compression_enabled = p_compression_enabled;
+}
+
+bool WebSocketServer::is_compression_enabled() const {
+	return compression_enabled;
+}
+
+void WebSocketServer::set_server_no_context_takeover(bool p_server_no_context_takeover) {
+	server_no_context_takeover = p_server_no_context_takeover;
+}
+
+bool WebSocketServer::is_server_no_context_takeover() const {
+	return server_no_context_takeover;
+}
+
+void WebSocketServer::set_client_no_context_takeover(bool p_client_no_context_takeover) {
+	client_no_context_takeover = p_client_no_context_takeover;
+}
+
+bool WebSocketServer::is_client_no_context_takeover() const {
+	return client_no_context_takeover;
+}
+
+void WebSocketServer::set_server_max_window_bits(int p_server_max_window_bits) {
+	server_max_window_bits = p_server_max_window_bits;
+}
+
+int WebSocketServer::get_server_max_window_bits() const {
+	return server_max_window_bits;
+}
+
+void WebSocketServer::set_client_max_window_bits(int p_client_max_window_bits) {
+	client_max_window_bits = p_client_max_window_bits;
+}
+
+int WebSocketServer::get_client_max_window_bits() const {
+	return client_max_window_bits;
 }
 
 void WebSocketServer::_on_peer_packet(int32_t p_peer_id) {

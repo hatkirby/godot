@@ -41,6 +41,8 @@
 #include "websocket_peer.h"
 #include "wslay/wslay.h"
 
+#include <zlib.h>
+
 #define WSL_MAX_HEADER_SIZE 4096
 
 class WSLPeer : public WebSocketPeer {
@@ -92,6 +94,44 @@ private:
 	int _out_buf_size;
 	int _out_pkt_size;
 
+	class DecompressionObject {
+	public:
+		explicit DecompressionObject(int window_bits);
+		~DecompressionObject();
+		int decompress(const uint8_t *input, int input_size, PoolVector<uint8_t> &output);
+
+	private:
+		int _window_bits;
+		int _window_length;
+		PoolVector<uint8_t> _window;
+		int _window_used;
+		z_stream _inflater;
+	};
+
+	DecompressionObject *_inflater = nullptr;
+
+	class CompressionObject {
+	public:
+		explicit CompressionObject(int window_bits);
+		~CompressionObject();
+		int compress(const uint8_t *input, int input_size, PoolVector<uint8_t> &output);
+
+	private:
+		int _window_bits;
+		int _window_length;
+		PoolVector<uint8_t> _window;
+		int _window_used;
+		z_stream _deflater;
+	};
+
+	CompressionObject *_deflater = nullptr;
+
+	bool _compression = false;
+	bool _decompress_reset = false;
+	bool _compress_reset = false;
+	int _decompress_window_bits = 0;
+	int _compress_window_bits = 0;
+
 public:
 	int close_code;
 	String close_reason;
@@ -117,6 +157,8 @@ public:
 	void make_context(PeerData *p_data, unsigned int p_in_buf_size, unsigned int p_in_pkt_size, unsigned int p_out_buf_size, unsigned int p_out_pkt_size);
 	Error parse_message(const wslay_event_on_msg_recv_arg *arg);
 	void invalidate();
+
+	void enable_compression(bool decompress_reset, bool compress_reset, int decompress_window_bits, int compress_window_bits);
 
 	WSLPeer();
 	~WSLPeer();

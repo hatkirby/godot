@@ -42,6 +42,10 @@ class WebSocketServer : public WebSocketMultiplayerPeer {
 
 	IP_Address bind_ip;
 
+	enum {
+		MAX_WINDOW_BITS = 15,
+	};
+
 protected:
 	static void _bind_methods();
 
@@ -49,6 +53,13 @@ protected:
 	Ref<X509Certificate> ssl_cert;
 	Ref<X509Certificate> ca_chain;
 	uint32_t handshake_timeout = 3000;
+
+	// Compression.
+	bool compression_enabled = false;
+	bool server_no_context_takeover = false;
+	bool client_no_context_takeover = false;
+	int server_max_window_bits = MAX_WINDOW_BITS;
+	int client_max_window_bits = MAX_WINDOW_BITS;
 
 public:
 	virtual void poll() = 0;
@@ -86,6 +97,17 @@ public:
 	void set_handshake_timeout(float p_timeout);
 
 	virtual Error set_buffers(int p_in_buffer, int p_in_packets, int p_out_buffer, int p_out_packets) = 0;
+
+	void set_compression_enabled(bool p_compression_enabled);
+	bool is_compression_enabled() const;
+	void set_server_no_context_takeover(bool p_server_no_context_takeover);
+	bool is_server_no_context_takeover() const;
+	void set_client_no_context_takeover(bool p_client_no_context_takeover);
+	bool is_client_no_context_takeover() const;
+	void set_server_max_window_bits(int p_server_max_window_bits);
+	int get_server_max_window_bits() const;
+	void set_client_max_window_bits(int p_client_max_window_bits);
+	int get_client_max_window_bits() const;
 
 	WebSocketServer();
 	~WebSocketServer();

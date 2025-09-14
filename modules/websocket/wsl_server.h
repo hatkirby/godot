@@ -62,6 +62,12 @@ private:
 		CharString response;
 		int response_sent;
 
+		bool compression_enabled = false;
+		bool server_no_context_takeover = false;
+		bool client_no_context_takeover = false;
+		int server_max_window_bits = MAX_WINDOW_BITS;
+		int client_max_window_bits = MAX_WINDOW_BITS;
+
 		PendingPeer();
 
 		Error do_handshake(const Vector<String> p_protocols, uint64_t p_timeout, const Vector<String> &p_extra_headers);

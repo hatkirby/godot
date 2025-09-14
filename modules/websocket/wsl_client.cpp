@@ -135,6 +135,42 @@ bool WSLClient::_verify_headers(String &r_protocol) {
 	_WSL_CHECK_NC("sec-websocket-accept", WSLPeer::compute_key_response(_key));
 #undef _WSL_CHECK_NC
 #undef _WSL_CHECK
+	if (headers.has("sec-websocket-extensions")) {
+		Vector<String> extensions = headers["sec-websocket-extensions"].split(", ");
+		for (int i = 0; i < extensions.size(); i++) {
+			const String &extension = extensions[i];
+
+			if (compression_enabled && extension.begins_with("permessage-deflate")) {
+				bool decompress_reset = server_no_context_takeover;
+				bool compress_reset = client_no_context_takeover;
+				int decompress_window_bits = server_max_window_bits;
+				int compress_window_bits = client_max_window_bits;
+
+				Vector<String> components = extension.split("; ");
+				for (int j = 0; j < components.size(); j++) {
+					const String &component = components[j];
+
+					if (component == "server_no_context_takeover") {
+						decompress_reset = true;
+					} else if (component == "client_no_context_takeover") {
+						compress_reset = true;
+					} else if (component.begins_with("server_max_window_bits=")) {
+						int remote = component.substr(23).to_int();
+						if (remote < decompress_window_bits) {
+							decompress_window_bits = remote;
+						}
+					} else if (component.begins_with("client_max_window_bits=")) {
+						int remote = component.substr(23).to_int();
+						if (remote < compress_window_bits) {
+							compress_window_bits = remote;
+						}
+					}
+				}
+
+				_peer->enable_compression(decompress_reset, compress_reset, decompress_window_bits, compress_window_bits);
+			}
+		}
+	}
 	if (_protocols.size() == 0) {
 		// We didn't request a custom protocol
 		ERR_FAIL_COND_V(headers.has("sec-websocket-protocol"), false);
@@ -219,6 +255,22 @@ Error WSLClient::connect_to_host(String p_host, String p_path, uint16_t p_port, 
 				request += ",";
 			}
 			request += p_protocols[i];
+		}
+		request += "\r\n";
+	}
+	if (compression_enabled) {
+		request += "Sec-WebSocket-Extensions: permessage-deflate";
+		if (server_no_context_takeover) {
+			request += "; server_no_context_takeover";
+		}
+		if (client_no_context_takeover) {
+			request += "; client_no_context_takeover";
+		}
+		if (server_max_window_bits != MAX_WINDOW_BITS) {
+			request += "; server_max_window_bits=" + server_max_window_bits;
+		}
+		if (client_max_window_bits != MAX_WINDOW_BITS) {
+			request += "; client_max_window_bits=" + client_max_window_bits;
 		}
 		request += "\r\n";
 	}

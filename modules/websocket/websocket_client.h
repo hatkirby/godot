@@ -40,10 +40,21 @@ class WebSocketClient : public WebSocketMultiplayerPeer {
 	GDCLASS(WebSocketClient, WebSocketMultiplayerPeer);
 	GDCICLASS(WebSocketClient);
 
+	enum {
+		MAX_WINDOW_BITS = 15,
+	};
+
 protected:
 	Ref<WebSocketPeer> _peer;
 	bool verify_ssl;
 	Ref<X509Certificate> ssl_cert;
+
+	// Compression.
+	bool compression_enabled = false;
+	bool server_no_context_takeover = false;
+	bool client_no_context_takeover = false;
+	int server_max_window_bits = MAX_WINDOW_BITS;
+	int client_max_window_bits = MAX_WINDOW_BITS;
 
 	static void _bind_methods();
 
@@ -63,6 +74,17 @@ public:
 
 	virtual bool is_server() const;
 	virtual ConnectionStatus get_connection_status() const = 0;
+
+	void set_compression_enabled(bool p_compression_enabled);
+	bool is_compression_enabled() const;
+	void set_server_no_context_takeover(bool p_server_no_context_takeover);
+	bool is_server_no_context_takeover() const;
+	void set_client_no_context_takeover(bool p_client_no_context_takeover);
+	bool is_client_no_context_takeover() const;
+	void set_server_max_window_bits(int p_server_max_window_bits);
+	int get_server_max_window_bits() const;
+	void set_client_max_window_bits(int p_client_max_window_bits);
+	int get_client_max_window_bits() const;
 
 	void _on_peer_packet();
 	void _on_connect(String p_protocol);
