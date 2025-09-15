@@ -65,7 +65,9 @@ bool WSLPeer::DecompressionObject::decompress(const uint8_t *input, int input_si
 		_inflater.zfree = Z_NULL;
 		_inflater.opaque = Z_NULL;
 
-		inflateInit2(&_inflater, -_window_bits);
+		if (!inflateInit2(&_inflater, -_window_bits)) {
+			return false;
+		}
 
 		_initialized = true;
 	}
@@ -157,7 +159,9 @@ bool WSLPeer::CompressionObject::compress(const uint8_t *input, int input_size, 
 		_deflater.zfree = Z_NULL;
 		_deflater.opaque = Z_NULL;
 
-		deflateInit2(&_deflater, Z_DEFAULT_COMPRESSION, Z_DEFLATED, -_window_bits, 8, Z_DEFAULT_STRATEGY);
+		if (!deflateInit2(&_deflater, Z_DEFAULT_COMPRESSION, Z_DEFLATED, -_window_bits, 8, Z_DEFAULT_STRATEGY)) {
+			return false;
+		}
 
 		_initialized = true;
 	}
