@@ -469,12 +469,12 @@ Error WSLPeer::put_packet(const uint8_t *p_buffer, int p_buffer_size) {
 	struct wslay_event_msg msg;
 	msg.opcode = write_mode == WRITE_MODE_TEXT ? WSLAY_TEXT_FRAME : WSLAY_BINARY_FRAME;
 
+	PoolVector<uint8_t> compressed;
 	if (_compression) {
 		if (_compress_reset) {
 			_deflater.reset();
 		}
 
-		PoolVector<uint8_t> compressed;
 		if (!_deflater.compress(p_buffer, p_buffer_size, compressed)) {
 			close_now();
 			return FAILED;
