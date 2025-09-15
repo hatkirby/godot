@@ -63,7 +63,7 @@ WSLPeer::DecompressionObject::~DecompressionObject() {
 	(void)inflateEnd(&_inflater);
 }
 
-int WSLPeer::DecompressionObject::decompress(const uint8_t *input, int input_size, PoolVector<uint8_t> &output) {
+bool WSLPeer::DecompressionObject::decompress(const uint8_t *input, int input_size, PoolVector<uint8_t> &output) {
 	output.resize(0);
 
 	int start_at = 0;
@@ -100,7 +100,7 @@ int WSLPeer::DecompressionObject::decompress(const uint8_t *input, int input_siz
 					if (_inflater.msg) {
 						WARN_PRINT(_inflater.msg);
 					}
-					return ret;
+					return false;
 			}
 		} while (_inflater.avail_out > 0 && _inflater.avail_in > 0);
 	} while (_inflater.avail_in > 0);
@@ -112,7 +112,7 @@ int WSLPeer::DecompressionObject::decompress(const uint8_t *input, int input_siz
 	_window_used = full_length - start_window_at;
 	std::memcpy(_window.write().ptr(), output.read().ptr() + start_window_at, _window_used);
 
-	return 0;
+	return true;
 }
 
 WSLPeer::CompressionObject::CompressionObject(int window_bits) {
@@ -137,7 +137,7 @@ WSLPeer::CompressionObject::~CompressionObject() {
 	(void)deflateEnd(&_deflater);
 }
 
-int WSLPeer::CompressionObject::compress(const uint8_t *input, int input_size, PoolVector<uint8_t> &output) {
+bool WSLPeer::CompressionObject::compress(const uint8_t *input, int input_size, PoolVector<uint8_t> &output) {
 	output.resize(0);
 
 	PoolVector<uint8_t> input_w;
@@ -178,7 +178,7 @@ int WSLPeer::CompressionObject::compress(const uint8_t *input, int input_size, P
 					if (_deflater.msg) {
 						WARN_PRINT(_deflater.msg);
 					}
-					return ret;
+					return false;
 			}
 		} while (_deflater.avail_out > 0 && _deflater.avail_in > 0);
 	} while (_deflater.avail_in > 0);
@@ -190,7 +190,7 @@ int WSLPeer::CompressionObject::compress(const uint8_t *input, int input_size, P
 	_window_used = input_w.size() - start_window_at;
 	std::memcpy(_window.write().ptr(), input_w.read().ptr() + start_window_at, _window_used);
 
-	return 0;
+	return true;
 }
 
 String WSLPeer::generate_key() {
@@ -362,15 +362,19 @@ Error WSLPeer::parse_message(const wslay_event_on_msg_recv_arg *arg) {
 			}
 
 			PoolVector<uint8_t> decompressed;
-			_inflater->decompress(arg->msg, arg->msg_length, decompressed);
+			if (!_inflater->decompress(arg->msg, arg->msg_length, decompressed)) {
+				return ERR_FILE_CORRUPT;
+			}
 
 			const uint8_t empty_compression_block[] = { 0x00, 0x00, 0xFF, 0xFF };
 			PoolVector<uint8_t> nothing;
-			_inflater->decompress(empty_compression_block, 4, nothing);
+			if (!_inflater->decompress(empty_compression_block, 4, nothing)) {
+				return ERR_FILE_CORRUPT;
+			}
 
 			_in_buffer.write_packet(decompressed.read().ptr(), decompressed.size(), &is_string);
 		} else {
-			// TODO: uh oh!
+			return ERR_SKIP;
 		}
 	} else {
 		_in_buffer.write_packet(arg->msg, arg->msg_length, &is_string);
@@ -441,7 +445,10 @@ Error WSLPeer::put_packet(const uint8_t *p_buffer, int p_buffer_size) {
 		}
 
 		PoolVector<uint8_t> compressed;
-		_deflater->compress(p_buffer, p_buffer_size, compressed);
+		if (!_deflater->compress(p_buffer, p_buffer_size, compressed)) {
+			close_now();
+			return FAILED;
+		}
 
 		msg.msg = compressed.read().ptr();
 		msg.msg_length = compressed.size() - 4;
@@ -518,6 +525,10 @@ void WSLPeer::close(int p_code, String p_reason) {
 	if (_inflater != nullptr) {
 		delete _inflater;
 		_inflater = nullptr;
+	}
+	if (_deflater != nullptr) {
+		delete _deflater;
+		_deflater = nullptr;
 	}
 }
 

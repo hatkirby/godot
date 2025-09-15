@@ -98,7 +98,7 @@ private:
 	public:
 		explicit DecompressionObject(int window_bits);
 		~DecompressionObject();
-		int decompress(const uint8_t *input, int input_size, PoolVector<uint8_t> &output);
+		bool decompress(const uint8_t *input, int input_size, PoolVector<uint8_t> &output);
 
 	private:
 		int _window_bits;
@@ -114,7 +114,7 @@ private:
 	public:
 		explicit CompressionObject(int window_bits);
 		~CompressionObject();
-		int compress(const uint8_t *input, int input_size, PoolVector<uint8_t> &output);
+		bool compress(const uint8_t *input, int input_size, PoolVector<uint8_t> &output);
 
 	private:
 		int _window_bits;

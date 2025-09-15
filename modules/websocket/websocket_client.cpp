@@ -84,7 +84,6 @@ bool WebSocketClient::is_server() const {
 }
 
 void WebSocketClient::set_compression_enabled(bool p_compression_enabled) {
-	// TODO: don't allow when connection is live.
 	compression_enabled = p_compression_enabled;
 }
 
