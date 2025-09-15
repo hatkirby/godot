@@ -281,12 +281,11 @@ void WSLServer::poll() {
 		data->id = id;
 
 		Ref<WSLPeer> ws_peer = memnew(WSLPeer);
-		ws_peer->make_context(data, _in_buf_size, _in_pkt_size, _out_buf_size, _out_pkt_size);
-		ws_peer->set_no_delay(true);
-
 		if (ppeer->compression_enabled) {
 			ws_peer->enable_compression(ppeer->client_no_context_takeover, ppeer->server_no_context_takeover, ppeer->client_max_window_bits, ppeer->server_max_window_bits);
 		}
+		ws_peer->make_context(data, _in_buf_size, _in_pkt_size, _out_buf_size, _out_pkt_size);
+		ws_peer->set_no_delay(true);
 
 		_peer_map[id] = ws_peer;
 		remove_peers.push_back(ppeer);
