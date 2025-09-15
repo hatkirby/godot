@@ -65,8 +65,8 @@ private:
 		bool compression_enabled = false;
 		bool server_no_context_takeover = false;
 		bool client_no_context_takeover = false;
-		int server_max_window_bits = MAX_WINDOW_BITS;
-		int client_max_window_bits = MAX_WINDOW_BITS;
+		int server_max_window_bits = WebSocketPeer::MAX_WINDOW_BITS;
+		int client_max_window_bits = WebSocketPeer::MAX_WINDOW_BITS;
 
 		PendingPeer();
 

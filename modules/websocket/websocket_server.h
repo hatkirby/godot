@@ -42,10 +42,6 @@ class WebSocketServer : public WebSocketMultiplayerPeer {
 
 	IP_Address bind_ip;
 
-	enum {
-		MAX_WINDOW_BITS = 15,
-	};
-
 protected:
 	static void _bind_methods();
 
@@ -58,8 +54,8 @@ protected:
 	bool compression_enabled = false;
 	bool server_no_context_takeover = false;
 	bool client_no_context_takeover = false;
-	int server_max_window_bits = MAX_WINDOW_BITS;
-	int client_max_window_bits = MAX_WINDOW_BITS;
+	int server_max_window_bits = WebSocketPeer::MAX_WINDOW_BITS;
+	int client_max_window_bits = WebSocketPeer::MAX_WINDOW_BITS;
 
 public:
 	virtual void poll() = 0;

@@ -41,29 +41,35 @@
 
 #define COMPRESSION_CHUNK 16384
 
-WSLPeer::DecompressionObject::DecompressionObject(int window_bits) {
+WSLPeer::DecompressionObject::~DecompressionObject() {
+	if (_initialized) {
+		(void)inflateEnd(&_inflater);
+	}
+}
+
+void WSLPeer::DecompressionObject::set_window_bits(int window_bits) {
 	if (window_bits >= 8 && window_bits <= 15) {
 		_window_bits = window_bits;
 	} else {
 		_window_bits = 15;
 	}
-
-	_window_length = 1 << _window_bits;
-	_window.resize(_window_length);
-	_window_used = 0;
-
-	_inflater.zalloc = Z_NULL;
-	_inflater.zfree = Z_NULL;
-	_inflater.opaque = Z_NULL;
-
-	inflateInit2(&_inflater, -_window_bits);
-}
-
-WSLPeer::DecompressionObject::~DecompressionObject() {
-	(void)inflateEnd(&_inflater);
 }
 
 bool WSLPeer::DecompressionObject::decompress(const uint8_t *input, int input_size, PoolVector<uint8_t> &output) {
+	if (!_initialized) {
+		_window_length = 1 << _window_bits;
+		_window.resize(_window_length);
+		_window_used = 0;
+
+		_inflater.zalloc = Z_NULL;
+		_inflater.zfree = Z_NULL;
+		_inflater.opaque = Z_NULL;
+
+		inflateInit2(&_inflater, -_window_bits);
+
+		_initialized = true;
+	}
+
 	output.resize(0);
 
 	int start_at = 0;
@@ -115,29 +121,47 @@ bool WSLPeer::DecompressionObject::decompress(const uint8_t *input, int input_si
 	return true;
 }
 
-WSLPeer::CompressionObject::CompressionObject(int window_bits) {
+void WSLPeer::DecompressionObject::reset() {
+	if (!_initialized) {
+		return;
+	}
+
+	(void)inflateEnd(&_inflater);
+	std::memset(&_inflater, 0, sizeof(z_stream));
+
+	_window.resize(0);
+	_initialized = false;
+}
+
+WSLPeer::CompressionObject::~CompressionObject() {
+	if (_initialized) {
+		(void)deflateEnd(&_deflater);
+	}
+}
+
+void WSLPeer::CompressionObject::set_window_bits(int window_bits) {
 	if (window_bits >= 8 && window_bits <= 15) {
 		_window_bits = window_bits;
 	} else {
 		_window_bits = 15;
 	}
-
-	_window_length = 1 << _window_bits;
-	_window.resize(_window_length);
-	_window_used = 0;
-
-	_deflater.zalloc = Z_NULL;
-	_deflater.zfree = Z_NULL;
-	_deflater.opaque = Z_NULL;
-
-	deflateInit2(&_deflater, Z_DEFAULT_COMPRESSION, Z_DEFLATED, -_window_bits, 8, Z_DEFAULT_STRATEGY);
-}
-
-WSLPeer::CompressionObject::~CompressionObject() {
-	(void)deflateEnd(&_deflater);
 }
 
 bool WSLPeer::CompressionObject::compress(const uint8_t *input, int input_size, PoolVector<uint8_t> &output) {
+	if (!_initialized) {
+		_window_length = 1 << _window_bits;
+		_window.resize(_window_length);
+		_window_used = 0;
+
+		_deflater.zalloc = Z_NULL;
+		_deflater.zfree = Z_NULL;
+		_deflater.opaque = Z_NULL;
+
+		deflateInit2(&_deflater, Z_DEFAULT_COMPRESSION, Z_DEFLATED, -_window_bits, 8, Z_DEFAULT_STRATEGY);
+
+		_initialized = true;
+	}
+
 	output.resize(0);
 
 	PoolVector<uint8_t> input_w;
@@ -191,6 +215,18 @@ bool WSLPeer::CompressionObject::compress(const uint8_t *input, int input_size, 
 	std::memcpy(_window.write().ptr(), input_w.read().ptr() + start_window_at, _window_used);
 
 	return true;
+}
+
+void WSLPeer::CompressionObject::reset() {
+	if (!_initialized) {
+		return;
+	}
+
+	(void)deflateEnd(&_deflater);
+	std::memset(&_deflater, 0, sizeof(z_stream));
+
+	_window.resize(0);
+	_initialized = false;
 }
 
 String WSLPeer::generate_key() {
@@ -352,23 +388,18 @@ Error WSLPeer::parse_message(const wslay_event_on_msg_recv_arg *arg) {
 	}
 	if (arg->rsv & 4) {
 		if (_compression) {
-			if (_decompress_reset && _inflater != nullptr) {
-				delete _inflater;
-				_inflater = nullptr;
-			}
-
-			if (_inflater == nullptr) {
-				_inflater = new DecompressionObject(_decompress_window_bits);
+			if (_decompress_reset) {
+				_inflater.reset();
 			}
 
 			PoolVector<uint8_t> decompressed;
-			if (!_inflater->decompress(arg->msg, arg->msg_length, decompressed)) {
+			if (!_inflater.decompress(arg->msg, arg->msg_length, decompressed)) {
 				return ERR_FILE_CORRUPT;
 			}
 
 			const uint8_t empty_compression_block[] = { 0x00, 0x00, 0xFF, 0xFF };
 			PoolVector<uint8_t> nothing;
-			if (!_inflater->decompress(empty_compression_block, 4, nothing)) {
+			if (!_inflater.decompress(empty_compression_block, 4, nothing)) {
 				return ERR_FILE_CORRUPT;
 			}
 
@@ -435,17 +466,12 @@ Error WSLPeer::put_packet(const uint8_t *p_buffer, int p_buffer_size) {
 	msg.opcode = write_mode == WRITE_MODE_TEXT ? WSLAY_TEXT_FRAME : WSLAY_BINARY_FRAME;
 
 	if (_compression) {
-		if (_compress_reset && _deflater != nullptr) {
-			delete _deflater;
-			_deflater = nullptr;
-		}
-
-		if (_deflater == nullptr) {
-			_deflater = new CompressionObject(_compress_window_bits);
+		if (_compress_reset) {
+			_deflater.reset();
 		}
 
 		PoolVector<uint8_t> compressed;
-		if (!_deflater->compress(p_buffer, p_buffer_size, compressed)) {
+		if (!_deflater.compress(p_buffer, p_buffer_size, compressed)) {
 			close_now();
 			return FAILED;
 		}
@@ -522,14 +548,8 @@ void WSLPeer::close(int p_code, String p_reason) {
 	_in_buffer.clear();
 	_packet_buffer.resize(0);
 	_compression = false;
-	if (_inflater != nullptr) {
-		delete _inflater;
-		_inflater = nullptr;
-	}
-	if (_deflater != nullptr) {
-		delete _deflater;
-		_deflater = nullptr;
-	}
+	_inflater.reset();
+	_deflater.reset();
 }
 
 IP_Address WSLPeer::get_connected_host() const {
@@ -553,8 +573,8 @@ void WSLPeer::enable_compression(bool decompress_reset, bool compress_reset, int
 	_compression = true;
 	_decompress_reset = decompress_reset;
 	_compress_reset = compress_reset;
-	_decompress_window_bits = decompress_window_bits;
-	_compress_window_bits = compress_window_bits;
+	_deflater.set_window_bits(decompress_window_bits);
+	_inflater.set_window_bits(compress_window_bits);
 }
 
 void WSLPeer::invalidate() {

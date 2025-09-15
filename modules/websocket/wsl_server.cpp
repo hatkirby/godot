@@ -191,10 +191,10 @@ Error WSLServer::PendingPeer::do_handshake(const Vector<String> p_protocols, uin
 					if (client_no_context_takeover) {
 						s += "; client_no_context_takeover";
 					}
-					if (server_max_window_bits != MAX_WINDOW_BITS) {
+					if (server_max_window_bits != WebSocketPeer::MAX_WINDOW_BITS) {
 						s += "; server_max_window_bits=" + server_max_window_bits;
 					}
-					if (client_max_window_bits != MAX_WINDOW_BITS) {
+					if (client_max_window_bits != WebSocketPeer::MAX_WINDOW_BITS) {
 						s += "; client_max_window_bits=" + client_max_window_bits;
 					}
 					s += "\r\n";

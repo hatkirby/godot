@@ -96,27 +96,33 @@ private:
 
 	class DecompressionObject {
 	public:
-		explicit DecompressionObject(int window_bits);
+		DecompressionObject() = default;
 		~DecompressionObject();
+		void set_window_bits(int window_bits);
 		bool decompress(const uint8_t *input, int input_size, PoolVector<uint8_t> &output);
+		void reset();
 
 	private:
-		int _window_bits;
-		int _window_length;
+		bool _initialized = false;
+		int _window_bits = 0;
+		int _window_length = 0;
 		PoolVector<uint8_t> _window;
-		int _window_used;
+		int _window_used = 0;
 		z_stream _inflater;
 	};
 
-	DecompressionObject *_inflater = nullptr;
+	DecompressionObject _inflater;
 
 	class CompressionObject {
 	public:
-		explicit CompressionObject(int window_bits);
+		CompressionObject() = default;
 		~CompressionObject();
+		void set_window_bits(int window_bits);
 		bool compress(const uint8_t *input, int input_size, PoolVector<uint8_t> &output);
+		void reset();
 
 	private:
+		bool _initialized;
 		int _window_bits;
 		int _window_length;
 		PoolVector<uint8_t> _window;
@@ -124,13 +130,11 @@ private:
 		z_stream _deflater;
 	};
 
-	CompressionObject *_deflater = nullptr;
+	CompressionObject _deflater;
 
 	bool _compression = false;
 	bool _decompress_reset = false;
 	bool _compress_reset = false;
-	int _decompress_window_bits = 0;
-	int _compress_window_bits = 0;
 
 public:
 	int close_code;

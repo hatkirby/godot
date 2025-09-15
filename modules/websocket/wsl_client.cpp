@@ -266,10 +266,10 @@ Error WSLClient::connect_to_host(String p_host, String p_path, uint16_t p_port, 
 		if (client_no_context_takeover) {
 			request += "; client_no_context_takeover";
 		}
-		if (server_max_window_bits != MAX_WINDOW_BITS) {
+		if (server_max_window_bits != WebSocketPeer::MAX_WINDOW_BITS) {
 			request += "; server_max_window_bits=" + server_max_window_bits;
 		}
-		if (client_max_window_bits != MAX_WINDOW_BITS) {
+		if (client_max_window_bits != WebSocketPeer::MAX_WINDOW_BITS) {
 			request += "; client_max_window_bits=" + client_max_window_bits;
 		}
 		request += "\r\n";

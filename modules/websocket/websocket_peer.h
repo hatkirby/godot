@@ -45,6 +45,10 @@ public:
 		WRITE_MODE_BINARY,
 	};
 
+	enum {
+		MAX_WINDOW_BITS = 15,
+	};
+
 protected:
 	static void _bind_methods();
 
