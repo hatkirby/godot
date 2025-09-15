@@ -77,12 +77,14 @@ bool WSLServer::PendingPeer::_parse_request(const Vector<String> p_protocols) {
 	_WSL_CHECK_EX("connection");
 #undef _WSL_CHECK_EX
 #undef _WSL_CHECK
+	bool has_compression_header = false;
 	if (headers.has("sec-websocket-extensions")) {
 		Vector<String> extensions = headers["sec-websocket-extensions"].split(", ");
 		for (int i = 0; i < extensions.size(); i++) {
 			const String &extension = extensions[i];
 
 			if (compression_enabled && extension.begins_with("permessage-deflate")) {
+				has_compression_header = true;
 				Vector<String> components = extension.split("; ");
 				for (int j = 0; j < components.size(); j++) {
 					const String &component = components[j];
@@ -105,6 +107,9 @@ bool WSLServer::PendingPeer::_parse_request(const Vector<String> p_protocols) {
 				}
 			}
 		}
+	}
+	if (!has_compression_header) {
+		compression_enabled = false;
 	}
 	key = headers["sec-websocket-key"];
 	if (headers.has("sec-websocket-protocol")) {
