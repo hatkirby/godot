@@ -113,6 +113,7 @@ bool WSLPeer::DecompressionObject::decompress(const uint8_t *input, int input_si
 		} while (_inflater.avail_out > 0 && _inflater.avail_in > 0);
 	} while (_inflater.avail_in > 0);
 
+	// TODO: potential overflow?
 	int full_length = _inflater.total_out - old_total;
 	output.resize(full_length);
 
@@ -211,6 +212,7 @@ bool WSLPeer::CompressionObject::compress(const uint8_t *input, int input_size, 
 		} while (_deflater.avail_out > 0 && _deflater.avail_in > 0);
 	} while (_deflater.avail_in > 0);
 
+	// TODO: potential overflow?
 	int full_length = _deflater.total_out - old_total;
 	output.resize(full_length);
 
